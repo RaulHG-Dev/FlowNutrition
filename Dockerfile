@@ -7,13 +7,14 @@ RUN corepack enable && pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm run build
 
-FROM nginx:alpine
+FROM node:20-alpine
+WORKDIR /app
 
-RUN mkdir -p /etc/nginx/templates
-COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY --from=build /app/package.json /app/package.json
+COPY --from=build /app/pnpm-lock.yaml /app/pnpm-lock.yaml
+COPY --from=build /app/node_modules /app/node_modules
+COPY --from=build /app/dist /app/dist
 
-COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 4173
 
-EXPOSE 80
-
-CMD ["/bin/sh", "-c", "envsubst '${PORT:-80}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+CMD ["sh", "-c", "npx vite preview --host 0.0.0.0 --port ${PORT:-4173}"]
